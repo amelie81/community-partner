@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import type { removeBackground as RemoveBgFn } from "@imgly/background-removal";
 
 type Format = "landscape" | "portrait";
 
@@ -269,17 +270,15 @@ export default function Home() {
   const applyRemoveBg = async (file: File) => {
     setRemoving(true);
     try {
-      const form = new FormData();
-      form.append("image_file", file);
-      const res = await fetch("/api/remove-bg", { method: "POST", body: form });
-      if (!res.ok) throw new Error("failed");
-      const blob = await res.blob();
+      const { removeBackground } = await import("@imgly/background-removal") as { removeBackground: typeof RemoveBgFn };
+      const blob = await removeBackground(file);
       const url  = URL.createObjectURL(blob);
       const img  = new Image();
       img.onload = () => setLogo(img);
       img.src = url;
-    } catch {
-      alert("Background removal failed. Is REMOVE_BG_API_KEY set?");
+    } catch (e) {
+      console.error(e);
+      alert("Background removal failed.");
       loadLogoFromFile(file);
     } finally {
       setRemoving(false);
@@ -406,7 +405,7 @@ export default function Home() {
           >
             <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${removeBg ? "left-6" : "left-1"}`} />
           </button>
-          <span className="text-sm text-white/80">Remove logo background (remove.bg)</span>
+          <span className="text-sm text-white/80">Remove logo background (AI, runs in browser)</span>
         </label>
 
         <button

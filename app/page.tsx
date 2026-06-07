@@ -274,7 +274,7 @@ export default function Home() {
       const blob = await removeBackground(file, {
         model: "isnet_quint8",
         output: { quality: 0.8, format: "image/png" },
-        publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/",
+        publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
       });
       const url  = URL.createObjectURL(blob);
       const img  = new Image();

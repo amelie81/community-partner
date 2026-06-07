@@ -64,7 +64,7 @@ export default function Home() {
       ctx.font = `${w * 0.02}px sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText("bg-landscape.png / bg-portrait.png", w / 2, h / 2);
-      ctx.fillText("in /public ablegen", w / 2, h / 2 + w * 0.025);
+      ctx.fillText("place in /public folder", w / 2, h / 2 + w * 0.025);
     }
 
     if (logo) {
@@ -111,7 +111,7 @@ export default function Home() {
       img.onload = () => setLogo(img);
       img.src = url;
     } catch {
-      alert("Hintergrundentfernung fehlgeschlagen. Ist REMOVE_BG_API_KEY gesetzt?");
+      alert("Background removal failed. Is REMOVE_BG_API_KEY set?");
       loadLogoFromFile(file);
     } finally {
       setRemoving(false);
@@ -145,7 +145,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#1a0612] text-white flex flex-col items-center py-10 px-4">
-      <h1 className="text-3xl font-bold mb-1 tracking-wide text-center">Community Partner Card</h1>
+      <h1 className="text-3xl font-bold mb-1 tracking-wide text-center">Community Partner Card Generator</h1>
       <p className="text-white/40 mb-8 text-sm">TUM Blockchain Conference 26 + Hackathon</p>
 
       {/* Format toggle */}
@@ -160,7 +160,7 @@ export default function Home() {
                 : "bg-transparent text-white/60 border-white/30 hover:border-white/60"
             }`}
           >
-            {f === "landscape" ? "⬛ Querformat (16:9)" : "▯ Hochformat (4:5)"}
+            {f === "landscape" ? "⬛ Landscape (16:9)" : "▯ Portrait (4:5)"}
           </button>
         ))}
       </div>
@@ -176,7 +176,7 @@ export default function Home() {
       {/* Controls */}
       <div className="w-full max-w-md flex flex-col gap-5">
         <div>
-          <label className="block text-sm font-medium text-white/70 mb-2">Partner-Logo hochladen</label>
+          <label className="block text-sm font-medium text-white/70 mb-2">Upload Partner Logo</label>
           <input
             ref={fileInputRef}
             type="file"
@@ -190,10 +190,10 @@ export default function Home() {
             className="w-full py-3 rounded-xl border border-dashed border-white/40 hover:border-white/80 transition-all text-white/70 hover:text-white text-sm"
           >
             {removing
-              ? "⏳ Hintergrund wird entfernt…"
+              ? "⏳ Removing background…"
               : logoFile
               ? `✓ ${logoFile.name}`
-              : "Datei auswählen"}
+              : "Choose file"}
           </button>
         </div>
 
@@ -213,14 +213,14 @@ export default function Home() {
               }`}
             />
           </button>
-          <span className="text-sm text-white/80">Logo-Hintergrund entfernen (remove.bg)</span>
+          <span className="text-sm text-white/80">Remove logo background (remove.bg)</span>
         </label>
 
         <button
           onClick={handleDownload}
           className="w-full py-3 rounded-xl bg-white text-black font-bold hover:bg-white/90 transition-all"
         >
-          Als PNG herunterladen
+          Download as PNG
         </button>
       </div>
     </main>

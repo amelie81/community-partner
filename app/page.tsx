@@ -271,7 +271,10 @@ export default function Home() {
     setRemoving(true);
     try {
       const { removeBackground } = await import("@imgly/background-removal") as { removeBackground: typeof RemoveBgFn };
-      const blob = await removeBackground(file);
+      const blob = await removeBackground(file, {
+        model: "small",
+        output: { quality: 0.8, format: "image/png" },
+      });
       const url  = URL.createObjectURL(blob);
       const img  = new Image();
       img.onload = () => setLogo(img);
@@ -384,7 +387,7 @@ export default function Home() {
             disabled={removing}
             className="w-full py-3 rounded-xl border border-dashed border-white/40 hover:border-white/80 transition-all text-white/70 hover:text-white text-sm"
           >
-            {removing ? "⏳ Removing background…" : logoFile ? `✓ ${logoFile.name}` : "Choose file"}
+            {removing ? "⏳ Removing background… (first run downloads model)" : logoFile ? `✓ ${logoFile.name}` : "Choose file"}
           </button>
         </div>
 

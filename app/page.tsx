@@ -10,9 +10,10 @@ const DIMS = {
 };
 
 // Oval slot for partner logo (relative coords 0–1)
+// Measured from actual pixel borders of the oval in the background images
 const OVAL = {
-  landscape: { cx: 0.745, cy: 0.5,   rx: 0.165, ry: 0.265 },
-  portrait:  { cx: 0.5,   cy: 0.735, rx: 0.32,  ry: 0.185 },
+  landscape: { cx: 0.735, cy: 0.500, rx: 0.225, ry: 0.210 },
+  portrait:  { cx: 0.500, cy: 0.710, rx: 0.330, ry: 0.110 },
 };
 
 interface Transform { x: number; y: number; scale: number; angle: number }

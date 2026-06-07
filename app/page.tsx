@@ -281,8 +281,9 @@ export default function Home() {
       img.onload = () => setLogo(img);
       img.src = url;
     } catch (e) {
-      console.error(e);
-      alert("Background removal failed.");
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("BG removal error:", e);
+      alert("Background removal failed:\n" + msg);
       loadLogoFromFile(file);
     } finally {
       setRemoving(false);

@@ -18,6 +18,22 @@ const OVAL = {
 
 interface Transform { x: number; y: number; scale: number; angle: number }
 
+function Slider({ label, value, min, max, step, onChange }: {
+  label: string; value: number; min: number; max: number; step: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
+      <input
+        type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-purple-500"
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [format, setFormat]     = useState<Format>("landscape");
   const [logo, setLogo]         = useState<HTMLImageElement | null>(null);
@@ -26,17 +42,10 @@ export default function Home() {
   const [removing, setRemoving] = useState(false);
   const [bgImgL, setBgImgL]     = useState<HTMLImageElement | null>(null);
   const [bgImgP, setBgImgP]     = useState<HTMLImageElement | null>(null);
+  const [xform, setXform]       = useState<Transform>({ x: 0, y: 0, scale: 1, angle: 0 });
 
-  // Logo transform: offsets relative to oval centre (in canvas px), scale, rotation (rad)
-  const [xform, setXform] = useState<Transform>({ x: 0, y: 0, scale: 1, angle: 0 });
-
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const wrapperRef  = useRef<HTMLDivElement>(null);
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Interaction state (refs → no re-render needed mid-gesture)
-  const drag = useRef<{ active: boolean; lastX: number; lastY: number }>({ active: false, lastX: 0, lastY: 0 });
-  const pinch = useRef<{ active: boolean; lastDist: number; lastAngle: number }>({ active: false, lastDist: 0, lastAngle: 0 });
 
   useEffect(() => {
     const load = (src: string, set: (img: HTMLImageElement) => void) => {
@@ -48,7 +57,6 @@ export default function Home() {
     load("/bg-portrait.png",  setBgImgP);
   }, []);
 
-  // Reset transform when logo or format changes
   useEffect(() => { setXform({ x: 0, y: 0, scale: 1, angle: 0 }); }, [logo, format]);
 
   const draw = useCallback(() => {
@@ -61,30 +69,28 @@ export default function Home() {
     ctx.clearRect(0, 0, w, h);
 
     const bgImg = format === "landscape" ? bgImgL : bgImgP;
-    if (bgImg) {
-      ctx.drawImage(bgImg, 0, 0, w, h);
-    } else {
-      ctx.fillStyle = "#2d0a1e";
-      ctx.fillRect(0, 0, w, h);
-    }
+    if (bgImg) ctx.drawImage(bgImg, 0, 0, w, h);
+    else { ctx.fillStyle = "#2d0a1e"; ctx.fillRect(0, 0, w, h); }
 
     if (logo) {
-      const ov  = OVAL[format];
-      const cx  = ov.cx * w;
-      const cy  = ov.cy * h;
-      const rx  = ov.rx * w;
-      const ry  = ov.ry * h;
+      const ov = OVAL[format];
+      const cx = ov.cx * w;
+      const cy = ov.cy * h;
+      const rx = ov.rx * w;
+      const ry = ov.ry * h;
 
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       ctx.clip();
 
-      // Fit logo to oval initially, then apply user transform
       const fitScale = Math.min((rx * 2 * 0.85) / logo.width, (ry * 2 * 0.85) / logo.height);
       const s = fitScale * xform.scale;
+      // x/y are in % of oval radius so sliders feel consistent across formats
+      const ox = xform.x * rx;
+      const oy = xform.y * ry;
 
-      ctx.translate(cx + xform.x, cy + xform.y);
+      ctx.translate(cx + ox, cy + oy);
       ctx.rotate(xform.angle);
       ctx.drawImage(logo, -logo.width * s / 2, -logo.height * s / 2, logo.width * s, logo.height * s);
       ctx.restore();
@@ -93,94 +99,6 @@ export default function Home() {
 
   useEffect(() => { draw(); }, [draw]);
 
-  // ── Canvas → canvas-space coordinate helper ──────────────────────────────
-  const canvasPoint = (clientX: number, clientY: number): { x: number; y: number } => {
-    const canvas = canvasRef.current!;
-    const rect   = canvas.getBoundingClientRect();
-    const scaleX = canvas.width  / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
-  };
-
-  // ── Mouse events ──────────────────────────────────────────────────────────
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!logo) return;
-    drag.current = { active: true, lastX: e.clientX, lastY: e.clientY };
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!drag.current.active || !logo) return;
-    const canvas = canvasRef.current!;
-    const rect   = canvas.getBoundingClientRect();
-    const sx = canvas.width  / rect.width;
-    const sy = canvas.height / rect.height;
-    const dx = (e.clientX - drag.current.lastX) * sx;
-    const dy = (e.clientY - drag.current.lastY) * sy;
-    drag.current.lastX = e.clientX;
-    drag.current.lastY = e.clientY;
-    setXform(t => ({ ...t, x: t.x + dx, y: t.y + dy }));
-  };
-  const onMouseUp = () => { drag.current.active = false; };
-
-  // ── Scroll to scale ───────────────────────────────────────────────────────
-  const onWheel = (e: React.WheelEvent) => {
-    if (!logo) return;
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.05 : 0.95;
-    setXform(t => ({ ...t, scale: Math.max(0.1, Math.min(10, t.scale * factor)) }));
-  };
-
-  // ── Touch events ──────────────────────────────────────────────────────────
-  const getTouchDist = (t: React.TouchList) =>
-    Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  const getTouchAngle = (t: React.TouchList) =>
-    Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (!logo) return;
-    if (e.touches.length === 1) {
-      drag.current = { active: true, lastX: e.touches[0].clientX, lastY: e.touches[0].clientY };
-    } else if (e.touches.length === 2) {
-      drag.current.active = false;
-      pinch.current = { active: true, lastDist: getTouchDist(e.touches), lastAngle: getTouchAngle(e.touches) };
-    }
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!logo) return;
-    e.preventDefault();
-    const canvas = canvasRef.current!;
-    const rect   = canvas.getBoundingClientRect();
-    const sx = canvas.width  / rect.width;
-    const sy = canvas.height / rect.height;
-
-    if (e.touches.length === 1 && drag.current.active) {
-      const dx = (e.touches[0].clientX - drag.current.lastX) * sx;
-      const dy = (e.touches[0].clientY - drag.current.lastY) * sy;
-      drag.current.lastX = e.touches[0].clientX;
-      drag.current.lastY = e.touches[0].clientY;
-      setXform(t => ({ ...t, x: t.x + dx, y: t.y + dy }));
-    } else if (e.touches.length === 2 && pinch.current.active) {
-      const dist  = getTouchDist(e.touches);
-      const angle = getTouchAngle(e.touches);
-      const scaleFactor = dist / pinch.current.lastDist;
-      const dAngle      = angle - pinch.current.lastAngle;
-      pinch.current.lastDist  = dist;
-      pinch.current.lastAngle = angle;
-      setXform(t => ({
-        ...t,
-        scale: Math.max(0.1, Math.min(10, t.scale * scaleFactor)),
-        angle: t.angle + dAngle,
-      }));
-    }
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (e.touches.length === 0) { drag.current.active = false; pinch.current.active = false; }
-    if (e.touches.length === 1) {
-      pinch.current.active = false;
-      drag.current = { active: true, lastX: e.touches[0].clientX, lastY: e.touches[0].clientY };
-    }
-  };
-
-  // ── File handling ─────────────────────────────────────────────────────────
   const loadLogoFromFile = (file: File) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -231,6 +149,7 @@ export default function Home() {
     a.click();
   };
 
+  const angleDeg = Math.round((xform.angle * 180) / Math.PI);
   const { w, h } = DIMS[format];
 
   return (
@@ -255,46 +174,16 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Hint */}
-      {logo && (
-        <p className="text-white/40 text-xs mb-3">
-          Drag to move · Scroll / pinch to zoom · Two-finger twist to rotate
-        </p>
-      )}
-
       {/* Canvas preview */}
       <div
-        ref={wrapperRef}
         className="w-full max-w-3xl mb-8 rounded-xl overflow-hidden shadow-2xl border border-white/10"
-        style={{ aspectRatio: `${w}/${h}`, cursor: logo ? "grab" : "default" }}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-        onWheel={onWheel}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        style={{ aspectRatio: `${w}/${h}` }}
       >
-        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block", userSelect: "none" }} />
+        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
       </div>
 
       {/* Controls */}
       <div className="w-full max-w-md flex flex-col gap-5">
-        {/* Rotation slider */}
-        {logo && (
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">
-              Rotation: {Math.round((xform.angle * 180) / Math.PI)}°
-            </label>
-            <input
-              type="range" min="-180" max="180" step="1"
-              value={Math.round((xform.angle * 180) / Math.PI)}
-              onChange={(e) => setXform(t => ({ ...t, angle: (Number(e.target.value) * Math.PI) / 180 }))}
-              className="w-full accent-purple-500"
-            />
-          </div>
-        )}
 
         {/* Upload */}
         <div>
@@ -314,6 +203,32 @@ export default function Home() {
             {removing ? "⏳ Removing background…" : logoFile ? `✓ ${logoFile.name}` : "Choose file"}
           </button>
         </div>
+
+        {/* Sliders — only shown when logo is loaded */}
+        {logo && (
+          <>
+            <Slider
+              label={`Size: ${Math.round(xform.scale * 100)}%`}
+              value={xform.scale} min={0.1} max={4} step={0.01}
+              onChange={(v) => setXform(t => ({ ...t, scale: v }))}
+            />
+            <Slider
+              label={`Position X: ${Math.round(xform.x * 100)}%`}
+              value={xform.x} min={-2} max={2} step={0.01}
+              onChange={(v) => setXform(t => ({ ...t, x: v }))}
+            />
+            <Slider
+              label={`Position Y: ${Math.round(xform.y * 100)}%`}
+              value={xform.y} min={-2} max={2} step={0.01}
+              onChange={(v) => setXform(t => ({ ...t, y: v }))}
+            />
+            <Slider
+              label={`Rotation: ${angleDeg}°`}
+              value={angleDeg} min={-180} max={180} step={1}
+              onChange={(v) => setXform(t => ({ ...t, angle: (v * Math.PI) / 180 }))}
+            />
+          </>
+        )}
 
         {/* Remove BG toggle */}
         <label className="flex items-center gap-3 cursor-pointer select-none">

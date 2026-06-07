@@ -272,7 +272,7 @@ export default function Home() {
     try {
       const { removeBackground } = await import("@imgly/background-removal") as { removeBackground: typeof RemoveBgFn };
       const blob = await removeBackground(file, {
-        model: "small",
+        model: "isnet_quint8",
         output: { quality: 0.8, format: "image/png" },
       });
       const url  = URL.createObjectURL(blob);
